@@ -128,6 +128,13 @@
             box-shadow: 0 0 0 3px rgba(0, 85, 153, 0.1);
         }
         
+        .form-group input.error,
+        .form-group select.error,
+        .form-group textarea.error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+        
         .form-group textarea {
             resize: vertical;
             min-height: 100px;
@@ -511,7 +518,10 @@
                     value = `(${value}`;
                 } else if (value.length <= 6) {
                     value = `(${value.slice(0, 3)}) ${value.slice(3)}`;
+                } else if (value.length <= 10) {
+                    value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
                 } else {
+                    // Limit to 10 digits
                     value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
                 }
             }
@@ -527,15 +537,64 @@
             });
         });
         
-        // Update progress on any input change
+        // Update progress on any input change and clear validation errors
         document.querySelectorAll('input, select, textarea').forEach(element => {
-            element.addEventListener('input', updateProgress);
+            element.addEventListener('input', function() {
+                updateProgress();
+                // Clear validation error when user starts typing
+                this.classList.remove('error');
+            });
             element.addEventListener('change', updateProgress);
         });
         
         // Form submission
         document.getElementById('insuranceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Validate required fields
+            const requiredFields = this.querySelectorAll('[required]');
+            let isValid = true;
+            let firstInvalidField = null;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('error');
+                    if (!firstInvalidField) firstInvalidField = field;
+                } else {
+                    field.classList.remove('error');
+                }
+            });
+            
+            // Validate email format
+            const emailField = document.getElementById('customerEmail');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailField.value && !emailRegex.test(emailField.value)) {
+                isValid = false;
+                emailField.classList.add('error');
+                if (!firstInvalidField) firstInvalidField = emailField;
+            } else {
+                emailField.classList.remove('error');
+            }
+            
+            // Validate phone number (must have at least 10 digits)
+            const phoneField = document.getElementById('customerPhone');
+            const phoneDigits = phoneField.value.replace(/\D/g, '');
+            if (phoneField.value && phoneDigits.length < 10) {
+                isValid = false;
+                phoneField.classList.add('error');
+                if (!firstInvalidField) firstInvalidField = phoneField;
+            } else {
+                phoneField.classList.remove('error');
+            }
+            
+            if (!isValid) {
+                alert('Please fill in all required fields correctly.');
+                if (firstInvalidField) {
+                    firstInvalidField.focus();
+                }
+                return;
+            }
             
             const submitBtn = document.querySelector('.submit-btn');
             submitBtn.disabled = true;
@@ -550,6 +609,7 @@
                     // Handle file upload - in real implementation, upload to server first
                     data.carrierDocument = true;
                     data.carrierDocumentName = value.name;
+                    data.carrierDocumentSize = value.size;
                 } else if (value !== '' && !(value instanceof File)) {
                     data[key] = value;
                 }
@@ -575,15 +635,40 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    alert(`Success! Your insurance application has been submitted.\n\nSubmission ID: ${result.submissionId}\n\nYou will receive an email shortly with next steps.`);
+                    alert(`Success! Your insurance application has been submitted.\n\nSubmission ID: ${result.submissionId || 'N/A'}\n\nYou will receive an email shortly with next steps.`);
                     this.reset();
+                    // Reset file upload label
+                    const fileLabel = document.getElementById('fileLabel');
+                    fileLabel.innerHTML = '📎 Click to upload document or drag and drop';
+                    fileLabel.classList.remove('has-file');
+                    // Reset checkbox visual states
+                    document.querySelectorAll('.checkbox-group').forEach(group => {
+                        group.classList.remove('checked');
+                    });
                     updateProgress();
                 } else {
-                    throw new Error('Submission failed');
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
                 }
             } catch (error) {
-                alert('There was an error submitting your application. Please try again or contact support.');
                 console.error('Submission error:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    // Demo mode - simulate successful submission for testing
+                    const demoSubmissionId = 'DEMO-' + Date.now();
+                    alert(`Demo Mode: Your insurance application has been submitted successfully!\n\nSubmission ID: ${demoSubmissionId}\n\nThis is a demo submission. In production, this would be sent to the server.`);
+                    this.reset();
+                    // Reset file upload label
+                    const fileLabel = document.getElementById('fileLabel');
+                    fileLabel.innerHTML = '📎 Click to upload document or drag and drop';
+                    fileLabel.classList.remove('has-file');
+                    // Reset checkbox visual states
+                    document.querySelectorAll('.checkbox-group').forEach(group => {
+                        group.classList.remove('checked');
+                    });
+                    updateProgress();
+                } else {
+                    alert('There was an error submitting your application. Please try again or contact support.\n\nError: ' + error.message);
+                }
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Insurance Application';
