@@ -382,24 +382,6 @@
                     </div>
                     
                     <div class="checkbox-group" onclick="toggleCheckbox(this)">
-                        <input type="checkbox" id="sl2" name="sl2" value="true">
-                        <label for="sl2">
-                            <strong>SL2 Form</strong>
-                            <br>
-                            <span class="info-text">Supplemental liability form</span>
-                        </label>
-                    </div>
-                    
-                    <div class="checkbox-group" onclick="toggleCheckbox(this)">
-                        <input type="checkbox" id="kraftRejectionForm" name="kraftRejectionForm" value="true">
-                        <label for="kraftRejectionForm">
-                            <strong>Kraft Rejection Form</strong>
-                            <br>
-                            <span class="info-text">Coverage rejection documentation</span>
-                        </label>
-                    </div>
-                    
-                    <div class="checkbox-group" onclick="toggleCheckbox(this)">
                         <input type="checkbox" id="paymentAuthorizationForm" name="paymentAuthorizationForm" value="true">
                         <label for="paymentAuthorizationForm">
                             <strong>Payment Authorization Form</strong>
@@ -555,8 +537,8 @@
                 }
             }
             
-            // Set checkbox values properly
-            ['brokerAgreement', 'sl2', 'kraftRejectionForm', 'paymentAuthorizationForm'].forEach(field => {
+            // Set checkbox values properly - only for the two remaining checkboxes
+            ['brokerAgreement', 'paymentAuthorizationForm'].forEach(field => {
                 data[field] = document.getElementById(field).checked;
             });
             
@@ -565,7 +547,7 @@
             
             try {
                 // Replace with your n8n webhook URL
-                const response = await fetch('https://qualifyr.app.n8n.cloud/webhook-test/insurance-form-submission', {
+                const response = await fetch('https://qualifyr.app.n8n.cloud/webhook/insurance-form-submission', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
