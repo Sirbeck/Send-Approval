@@ -529,32 +529,23 @@
             submitBtn.textContent = 'Processing...';
             
             const formData = new FormData(this);
-            const data = {};
             
-            // Convert FormData to JSON
-            for (let [key, value] of formData.entries()) {
-                if (key === 'carrierDocument' && value instanceof File && value.size > 0) {
-                    // Handle file upload - in real implementation, upload to server first
-                    data.carrierDocument = true;
-                    data.carrierDocumentName = value.name;
-                } else if (value !== '' && !(value instanceof File)) {
-                    data[key] = value;
-                }
-            }
-            
-            // Set checkbox values properly - only for the two remaining checkboxes
+            // Add checkbox values to FormData
             ['brokerAgreement', 'paymentAuthorizationForm'].forEach(field => {
-                data[field] = document.getElementById(field).checked;
+                formData.set(field, document.getElementById(field).checked);
             });
             
             // Format phone number for submission
-            data.customerPhone = data.customerPhone.replace(/\D/g, '');
+            const phoneNumber = formData.get('customerPhone');
+            if (phoneNumber) {
+                formData.set('customerPhone', phoneNumber.replace(/\D/g, ''));
+            }
             
             // Add timestamp and form metadata
-            data.submissionTimestamp = new Date().toISOString();
-            data.formSource = 'insurance-coverage-form';
+            formData.set('submissionTimestamp', new Date().toISOString());
+            formData.set('formSource', 'insurance-coverage-form');
             
-            console.log('Submitting form data:', data);
+            console.log('Submitting form data with file attachment...');
             
             try {
                 // Replace with your n8n webhook URL
@@ -562,11 +553,7 @@
                 
                 const response = await fetch(webhookUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    body: formData // Send FormData directly to preserve file attachment
                 });
                 
                 console.log('Webhook response status:', response.status);
